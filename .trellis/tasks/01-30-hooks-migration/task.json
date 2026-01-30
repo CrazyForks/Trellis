@@ -1,0 +1,39 @@
+{
+  "id": "hooks-migration",
+  "name": "hooks-migration",
+  "title": "Hooks 迁移 - Python to TypeScript",
+  "description": "将 Claude Code hooks 从 Python 迁移到 TypeScript，统一技术栈",
+  "status": "planning",
+  "dev_type": "backend",
+  "scope": null,
+  "priority": "P3",
+  "creator": "taosu",
+  "assignee": "taosu",
+  "createdAt": "2026-01-30",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": null,
+  "worktree_path": null,
+  "current_phase": 0,
+  "next_action": [
+    {"phase": 1, "action": "implement"},
+    {"phase": 2, "action": "check"},
+    {"phase": 3, "action": "finish"},
+    {"phase": 4, "action": "create-pr"}
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [
+    "研究 Claude hooks TypeScript 支持",
+    "迁移 inject-subagent-context.py",
+    "迁移 ralph-loop.py",
+    "更新模板 hooks",
+    "验证 hooks 正常工作"
+  ],
+  "relatedFiles": [
+    ".claude/hooks/inject-subagent-context.py",
+    ".claude/hooks/ralph-loop.py",
+    "src/templates/claude/hooks/"
+  ],
+  "notes": "前置依赖: 01-30-multi-agent-pipeline-refactor 完成后再开始"
+}
