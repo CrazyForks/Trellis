@@ -206,49 +206,45 @@ write_task_json() {
 
   case "$project_type" in
     frontend)
-      subtasks='[
-    {"name": "Fill frontend guidelines", "status": "pending"},
-    {"name": "Add code examples", "status": "pending"}
-  ]'
-      related_files='[
-    ".trellis/spec/frontend/"
-  ]'
+      subtasks='["Fill frontend guidelines", "Add code examples"]'
+      related_files='[".trellis/spec/frontend/"]'
       ;;
     backend)
-      subtasks='[
-    {"name": "Fill backend guidelines", "status": "pending"},
-    {"name": "Add code examples", "status": "pending"}
-  ]'
-      related_files='[
-    ".trellis/spec/backend/"
-  ]'
+      subtasks='["Fill backend guidelines", "Add code examples"]'
+      related_files='[".trellis/spec/backend/"]'
       ;;
     fullstack)
-      subtasks='[
-    {"name": "Fill backend guidelines", "status": "pending"},
-    {"name": "Fill frontend guidelines", "status": "pending"},
-    {"name": "Add code examples", "status": "pending"}
-  ]'
-      related_files='[
-    ".trellis/spec/backend/",
-    ".trellis/spec/frontend/"
-  ]'
+      subtasks='["Fill backend guidelines", "Fill frontend guidelines", "Add code examples"]'
+      related_files='[".trellis/spec/backend/", ".trellis/spec/frontend/"]'
       ;;
   esac
 
   cat > "$dir/task.json" << EOF
 {
   "id": "$TASK_NAME",
-  "name": "Bootstrap Guidelines",
+  "name": "bootstrap-guidelines",
+  "title": "Bootstrap Guidelines",
   "description": "Fill in project development guidelines for AI agents",
   "status": "in_progress",
   "dev_type": "docs",
+  "scope": null,
   "priority": "P1",
   "creator": "$developer",
   "assignee": "$developer",
   "createdAt": "$today",
   "completedAt": null,
+  "branch": null,
+  "base_branch": null,
+  "worktree_path": null,
+  "current_phase": 0,
+  "next_action": [
+    {"phase": 1, "action": "implement"},
+    {"phase": 2, "action": "check"},
+    {"phase": 3, "action": "finish"},
+    {"phase": 4, "action": "create-pr"}
+  ],
   "commit": null,
+  "pr_url": null,
   "subtasks": $subtasks,
   "relatedFiles": $related_files,
   "notes": "First-time setup task created by trellis init ($project_type project)"
