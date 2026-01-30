@@ -3,7 +3,7 @@
  */
 
 import chalk from "chalk";
-import { archiveTask, listArchivedTasks, listTasks } from "../../core/task.js";
+import { archiveTask, listArchivedTasks, listTasks } from "../../core/task/index.js";
 import { getRepoRoot, isTrellisInitialized } from "../../core/paths.js";
 
 export interface TaskArchiveOptions {

@@ -14,13 +14,13 @@ import {
   getDeveloper,
   getActiveJournalFile,
   countLines,
-} from "../core/developer.js";
+} from "../core/developer/index.js";
 import {
   getGitStatus,
   getRecentCommits,
   isGitRepo,
-} from "../core/git.js";
-import { readTask, listTasks } from "../core/task.js";
+} from "../core/git/index.js";
+import { readTask, listTasks } from "../core/task/index.js";
 import path from "node:path";
 
 export interface ContextOptions {
@@ -39,7 +39,7 @@ interface ContextOutput {
     branch: string;
     isClean: boolean;
     uncommittedChanges: number;
-    recentCommits: Array<{ hash: string; message: string }>;
+    recentCommits: { hash: string; message: string }[];
   };
   tasks: {
     active: TaskSummary[];

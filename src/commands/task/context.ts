@@ -10,7 +10,7 @@ import {
   addContext,
   validateContext,
   listContext,
-} from "../../core/task.js";
+} from "../../core/task/index.js";
 import { getRepoRoot, isTrellisInitialized } from "../../core/paths.js";
 import type { DevType } from "../../types/task.js";
 
@@ -34,7 +34,7 @@ function resolveTaskDir(taskDir: string, repoRoot: string): string {
 export async function taskInitContext(
   taskDir: string,
   devType: string,
-  options: TaskContextOptions,
+  _options: TaskContextOptions,
 ): Promise<void> {
   const repoRoot = getRepoRoot();
 

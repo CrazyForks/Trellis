@@ -8,7 +8,7 @@ import {
   getDeveloperInfo,
   initDeveloper,
   showDeveloperInfo,
-} from "../core/developer.js";
+} from "../core/developer/index.js";
 import { getRepoRoot, isTrellisInitialized, PATHS } from "../core/paths.js";
 
 export interface DeveloperInitOptions {

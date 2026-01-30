@@ -3,8 +3,8 @@
  */
 
 import chalk from "chalk";
-import { listTasks } from "../../core/task.js";
-import { getDeveloper } from "../../core/developer.js";
+import { listTasks } from "../../core/task/index.js";
+import { getDeveloper } from "../../core/developer/index.js";
 import { getRepoRoot, isTrellisInitialized } from "../../core/paths.js";
 import type { TaskStatus } from "../../types/task.js";
 

@@ -3,7 +3,7 @@
  */
 
 import chalk from "chalk";
-import { createTask } from "../../core/task.js";
+import { createTask } from "../../core/task/index.js";
 import { getRepoRoot, isTrellisInitialized } from "../../core/paths.js";
 import type { TaskPriority } from "../../types/task.js";
 
