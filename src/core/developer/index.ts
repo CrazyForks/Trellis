@@ -10,12 +10,24 @@ import {
   getWorkspaceDir,
   PATHS,
   FILE_NAMES,
-} from "./paths.js";
-import type { Developer } from "../types/task.js";
+} from "../paths.js";
+import type { Developer, DeveloperInfo } from "./schemas.js";
+
+// Re-export schemas
+export {
+  DeveloperSchema,
+  DeveloperInfoSchema,
+  type Developer,
+  type DeveloperInfo,
+  parseDeveloper,
+  safeParseDeveloper,
+} from "./schemas.js";
 
 /**
  * Get the current developer name
- * Returns null if not initialized
+ *
+ * @param repoRoot - Repository root path
+ * @returns Developer name or null if not initialized
  */
 export function getDeveloper(repoRoot?: string): string | null {
   const filePath = getDeveloperFilePath(repoRoot);
@@ -32,8 +44,11 @@ export function getDeveloper(repoRoot?: string): string | null {
 
 /**
  * Get full developer info
+ *
+ * @param repoRoot - Repository root path
+ * @returns Developer info or null if not initialized
  */
-export function getDeveloperInfo(repoRoot?: string): Developer | null {
+export function getDeveloperRecord(repoRoot?: string): Developer | null {
   const filePath = getDeveloperFilePath(repoRoot);
 
   if (!fs.existsSync(filePath)) {
@@ -55,7 +70,18 @@ export function getDeveloperInfo(repoRoot?: string): Developer | null {
 }
 
 /**
+ * Get full developer info (alias for getDeveloperRecord)
+ *
+ * @param repoRoot - Repository root path
+ * @returns Developer info or null if not initialized
+ */
+export const getDeveloperInfo = getDeveloperRecord;
+
+/**
  * Check if developer is initialized
+ *
+ * @param repoRoot - Repository root path
+ * @returns True if developer is initialized
  */
 export function isDeveloperInitialized(repoRoot?: string): boolean {
   return getDeveloper(repoRoot) !== null;
@@ -63,6 +89,11 @@ export function isDeveloperInitialized(repoRoot?: string): boolean {
 
 /**
  * Initialize developer identity
+ *
+ * Creates .developer file and workspace directory structure.
+ *
+ * @param name - Developer name
+ * @param repoRoot - Repository root path
  */
 export function initDeveloper(name: string, repoRoot?: string): void {
   if (!name) {
@@ -156,7 +187,11 @@ export function initDeveloper(name: string, repoRoot?: string): void {
 }
 
 /**
- * Ensure developer is initialized, throw error if not
+ * Ensure developer is initialized
+ *
+ * @param repoRoot - Repository root path
+ * @returns Developer name
+ * @throws Error if developer is not initialized
  */
 export function ensureDeveloper(repoRoot?: string): string {
   const developer = getDeveloper(repoRoot);
@@ -172,6 +207,9 @@ export function ensureDeveloper(repoRoot?: string): string {
 
 /**
  * Get active journal file path
+ *
+ * @param repoRoot - Repository root path
+ * @returns Path to active journal file or null
  */
 export function getActiveJournalFile(repoRoot?: string): string | null {
   const developer = getDeveloper(repoRoot);
@@ -193,8 +231,10 @@ export function getActiveJournalFile(repoRoot?: string): string | null {
   let latestFile: string | null = null;
 
   for (const file of files) {
-    const match = file.match(new RegExp(`^${FILE_NAMES.JOURNAL_PREFIX}(\\d+)\\.md$`));
-    if (match) {
+    const match = file.match(
+      new RegExp(`^${FILE_NAMES.JOURNAL_PREFIX}(\\d+)\\.md$`),
+    );
+    if (match?.[1]) {
       const num = parseInt(match[1], 10);
       if (num > highest) {
         highest = num;
@@ -208,6 +248,9 @@ export function getActiveJournalFile(repoRoot?: string): string | null {
 
 /**
  * Count lines in a file
+ *
+ * @param filePath - Path to file
+ * @returns Number of lines
  */
 export function countLines(filePath: string): number {
   if (!fs.existsSync(filePath)) {
@@ -220,24 +263,19 @@ export function countLines(filePath: string): number {
 
 /**
  * Get developer info formatted for display
+ *
+ * @param repoRoot - Repository root path
+ * @returns Developer info object
  */
-export function showDeveloperInfo(repoRoot?: string): {
-  name: string | null;
-  workspacePath: string | null;
-  journalFile: string | null;
-  journalLines: number;
-} {
+export function showDeveloperInfo(repoRoot?: string): DeveloperInfo {
   const developer = getDeveloper(repoRoot);
   const journalFile = getActiveJournalFile(repoRoot);
+  const root = repoRoot ?? getRepoRoot();
 
   return {
     name: developer,
-    workspacePath: developer
-      ? `${PATHS.WORKSPACE}/${developer}/`
-      : null,
-    journalFile: journalFile
-      ? path.relative(getRepoRoot(repoRoot), journalFile)
-      : null,
+    workspacePath: developer ? `${PATHS.WORKSPACE}/${developer}/` : null,
+    journalFile: journalFile ? path.relative(root, journalFile) : null,
     journalLines: journalFile ? countLines(journalFile) : 0,
   };
 }
