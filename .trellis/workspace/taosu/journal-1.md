@@ -1050,3 +1050,14 @@ Marked 01-30-refactor-core-structure as completed. Updated 01-30-multi-agent-pip
 ### Next Steps
 
 - None - task complete
+## Session 23: CLI Commands Expansion - Session & Bootstrap
+
+**Date**: 2026-01-30
+**Commit**: `ee16e5d`
+
+### Summary
+
+实现 trellis session add/status 和 trellis task bootstrap 命令，更新 workflow.md 文档
+
+---
+

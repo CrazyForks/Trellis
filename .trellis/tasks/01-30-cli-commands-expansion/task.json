@@ -23,15 +23,15 @@
   "commit": null,
   "pr_url": null,
   "subtasks": [
-    {"name": "trellis context", "status": "completed"},
-    {"name": "trellis developer init/show/get", "status": "completed"},
-    {"name": "trellis task create/list/start/finish/archive", "status": "completed"},
-    {"name": "trellis task context init/add/validate/list", "status": "completed"},
-    {"name": "trellis task bootstrap", "status": "completed"},
-    {"name": "trellis session add/status", "status": "completed"},
-    {"name": "更新 workflow.md 文档", "status": "completed"},
-    {"name": "Windows 环境测试", "status": "pending"},
-    {"name": "单元测试覆盖", "status": "pending"}
+    "[x] trellis context",
+    "[x] trellis developer init/show/get",
+    "[x] trellis task create/list/start/finish/archive",
+    "[x] trellis task context init/add/validate/list",
+    "[x] trellis task bootstrap",
+    "[x] trellis session add/status",
+    "[x] 更新 workflow.md 文档",
+    "[ ] Windows 环境测试",
+    "[ ] 单元测试覆盖"
   ],
   "relatedFiles": [
     "src/commands/",

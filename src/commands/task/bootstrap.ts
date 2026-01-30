@@ -152,30 +152,30 @@ function generateTaskJson(
 ): Record<string, unknown> {
   const today = new Date().toISOString().split("T")[0];
 
-  let subtasks: { name: string; status: string }[];
+  let subtasks: string[];
   let relatedFiles: string[];
 
   switch (projectType) {
     case "frontend":
       subtasks = [
-        { name: "Fill frontend guidelines", status: "pending" },
-        { name: "Add code examples", status: "pending" },
+        "[ ] Fill frontend guidelines",
+        "[ ] Add code examples",
       ];
       relatedFiles = [".trellis/spec/frontend/"];
       break;
     case "backend":
       subtasks = [
-        { name: "Fill backend guidelines", status: "pending" },
-        { name: "Add code examples", status: "pending" },
+        "[ ] Fill backend guidelines",
+        "[ ] Add code examples",
       ];
       relatedFiles = [".trellis/spec/backend/"];
       break;
     case "fullstack":
     default:
       subtasks = [
-        { name: "Fill backend guidelines", status: "pending" },
-        { name: "Fill frontend guidelines", status: "pending" },
-        { name: "Add code examples", status: "pending" },
+        "[ ] Fill backend guidelines",
+        "[ ] Fill frontend guidelines",
+        "[ ] Add code examples",
       ];
       relatedFiles = [".trellis/spec/backend/", ".trellis/spec/frontend/"];
       break;
