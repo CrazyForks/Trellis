@@ -134,11 +134,94 @@ dist/
 |-------|-----------|----------------|
 | CLI | `cli/` | Parse arguments, display help, call commands |
 | Commands | `commands/` | Implement CLI commands, orchestrate actions |
+| **Core** | `core/` | **Business domain modules** |
 | Configurators | `configurators/` | Copy/generate configuration for tools |
 | Templates | `templates/` | Extract template content, provide utilities |
 | Types | `types/` | TypeScript type definitions |
 | Utils | `utils/` | Reusable utility functions |
 | Constants | `constants/` | Shared constants (paths, names) |
+
+### Core Module Structure
+
+The `core/` directory organizes business logic by **domain**, not by I/O type:
+
+```
+src/core/
+├── index.ts              # Unified re-exports for backward compatibility
+├── paths.ts              # Path utilities (used by all modules)
+│
+├── task/                 # Task management domain
+│   ├── index.ts          # Unified exports
+│   ├── schemas.ts        # Zod schemas (Task, ContextEntry types)
+│   ├── crud.ts           # Task CRUD operations
+│   └── context.ts        # Context file management (.jsonl)
+│
+├── developer/            # Developer identity domain
+│   ├── index.ts          # Unified exports
+│   └── schemas.ts        # Zod schemas (Developer type)
+│
+├── session/              # Session/Journal domain
+│   ├── index.ts          # Unified exports
+│   ├── schemas.ts        # Zod schemas (Session type)
+│   ├── journal.ts        # Journal file operations
+│   └── workspace.ts      # Workspace index.md updates
+│
+├── git/                  # Git operations domain
+│   ├── index.ts          # Unified exports
+│   ├── types.ts          # Git types (GitCommit, Worktree, etc.)
+│   ├── base.ts           # Basic git commands (using execa)
+│   ├── worktree.ts       # Worktree operations
+│   └── config.ts         # worktree.yaml config parsing
+│
+└── platforms/            # Platform adapters (Claude, OpenCode, etc.)
+    ├── index.ts          # detectPlatform() + getPlatformAdapter()
+    ├── types.ts          # Platform, PlatformAdapter interface
+    └── claude/
+        ├── index.ts      # Claude adapter implementation
+        └── context.ts    # Claude-specific context generation
+```
+
+**Design Decision**: Organize by business domain, NOT by I/O separation.
+
+```typescript
+// Bad: Separating I/O from logic (over-engineering for CLI)
+core/
+├── adapters/           # I/O adapters
+│   ├── file-adapter.ts
+│   └── git-adapter.ts
+├── services/           # Pure logic
+│   ├── task-service.ts
+│   └── git-service.ts
+
+// Good: Domain-driven (simpler for CLI tools)
+core/
+├── task/               # All task logic together
+├── git/                # All git logic together
+└── platforms/          # Platform-specific logic
+```
+
+### Module Export Pattern
+
+Each domain module has an `index.ts` that re-exports everything:
+
+```typescript
+// core/task/index.ts
+export * from "./schemas.js";   // Types and schemas
+export * from "./crud.js";      // CRUD operations
+export * from "./context.js";   // Context management
+```
+
+The root `core/index.ts` re-exports all domains for backward compatibility:
+
+```typescript
+// core/index.ts
+export * from "./paths.js";
+export * from "./developer/index.js";
+export * from "./git/index.js";
+export * from "./task/index.js";
+export * from "./session/index.js";
+export * from "./platforms/index.js";
+```
 
 ### Configurator Pattern
 

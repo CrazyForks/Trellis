@@ -23,6 +23,7 @@ These guides help you **ask the right questions before coding**.
 |-------|---------|-------------|
 | [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md) | Identify patterns and reduce duplication | When you notice repeated patterns |
 | [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md) | Think through data flow across layers | Features spanning multiple layers |
+| [Shell to CLI Migration Guide](./shell-to-cli-migration-guide.md) | Shell→TypeScript migration lessons and pitfalls | When migrating shell scripts to CLI |
 
 ---
 

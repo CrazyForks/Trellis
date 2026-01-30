@@ -261,6 +261,582 @@ let mutableCount = 0;
 
 ---
 
+## Zod Runtime Validation
+
+### Schema-First Types
+
+Use Zod schemas as the single source of truth for types:
+
+```typescript
+// Good: Type inferred from schema
+import { z } from "zod";
+
+export const TaskSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  status: z.enum(["planning", "in_progress", "completed"]),
+  assignee: z.string(),
+  createdAt: z.string(),
+  completedAt: z.string().nullable(),
+});
+
+export type Task = z.infer<typeof TaskSchema>;
+
+// Bad: Separate type definition that can drift from validation
+interface Task {
+  id: string;
+  name: string;
+  // ... might not match what you actually validate
+}
+```
+
+### Safe Parsing Pattern
+
+Use `safeParse` for external data, let TypeScript infer the return type:
+
+```typescript
+// Good: Let TypeScript infer safeParse return type
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export function safeParseTask(content: unknown) {
+  return TaskSchema.safeParse(content);
+}
+
+// Usage
+const result = safeParseTask(JSON.parse(fileContent));
+if (result.success) {
+  const task: Task = result.data;  // Type-safe
+} else {
+  console.warn(`Invalid: ${result.error.message}`);
+}
+```
+
+> **Gotcha**: In Zod v4, `z.SafeParseReturnType` is not exported. Don't try to explicitly type the return - let TypeScript infer it.
+
+### Template-Schema Consistency
+
+When bash scripts or templates generate JSON, they MUST match the Zod schema:
+
+```bash
+# Bad: Missing required fields (will fail Zod validation)
+cat > task.json << EOF
+{
+  "id": "$ID",
+  "name": "$NAME"
+}
+EOF
+
+# Good: All schema-required fields included
+cat > task.json << EOF
+{
+  "id": "$ID",
+  "name": "$NAME",
+  "title": "$TITLE",
+  "status": "planning",
+  "assignee": "$ASSIGNEE",
+  "createdAt": "$TODAY",
+  "completedAt": null
+}
+EOF
+```
+
+> **Common Mistake**: Adding Zod validation to existing code without updating all JSON-generating scripts (bash, templates). This causes runtime validation errors.
+
+---
+
+## Git Operations with execa
+
+### Why execa over child_process
+
+Use `execa` for executing external commands (especially git):
+
+```typescript
+// Good: execa with proper types and error handling
+import { execa } from "execa";
+
+export async function getCurrentBranch(cwd?: string): Promise<string> {
+  const { stdout } = await execa("git", ["branch", "--show-current"], {
+    cwd: cwd ?? getRepoRoot(),
+  });
+  return stdout.trim();
+}
+
+// Bad: child_process.execSync with string command
+import { execSync } from "child_process";
+const branch = execSync("git branch --show-current").toString().trim();
+```
+
+**Why execa**:
+- Promise-based API
+- Better error messages with `stderr` included
+- Proper argument escaping (no shell injection)
+- TypeScript types included
+- Industry standard (used by Shadcn/ui, etc.)
+
+### Sync vs Async
+
+Use async by default, sync only for CLI initialization:
+
+```typescript
+// Async (preferred): For most operations
+export async function getGitStatusAsync(cwd?: string): Promise<GitStatus> {
+  const { stdout } = await execa("git", ["status", "--porcelain"], { cwd });
+  return parseGitStatus(stdout);
+}
+
+// Sync: Only for synchronous CLI flows (e.g., before async context is available)
+export function getGitStatusSync(cwd?: string): GitStatus {
+  const result = execSync("git status --porcelain", { cwd, encoding: "utf-8" });
+  return parseGitStatus(result);
+}
+```
+
+### Error Handling
+
+```typescript
+export async function branchExists(branch: string, cwd?: string): Promise<boolean> {
+  try {
+    await execa("git", ["rev-parse", "--verify", branch], { cwd });
+    return true;
+  } catch {
+    return false;  // Branch doesn't exist
+  }
+}
+```
+
+---
+
+## Platform Adapter Pattern
+
+### When to Use
+
+Use the adapter pattern when code needs to support multiple platforms (Claude Code, OpenCode, Cursor, etc.):
+
+```typescript
+// core/platforms/types.ts
+export type Platform = "claude" | "opencode" | "cursor" | "codex";
+
+export interface PlatformAdapter {
+  readonly platform: Platform;
+
+  // Feature-specific methods
+  generateContextFiles(taskDir: string, devType: DevType): void;
+  getConfigDir(): string;  // ".claude" or ".opencode"
+
+  // Capability detection
+  supportsMultiAgent(): boolean;
+  supportsHooks(): boolean;
+
+  // Platform-specific operations
+  launchAgent(options: LaunchAgentOptions): Promise<AgentProcess>;
+}
+```
+
+### Implementation
+
+```typescript
+// core/platforms/claude/index.ts
+export const claudeAdapter: PlatformAdapter = {
+  platform: "claude",
+
+  generateContextFiles(taskDir, devType) {
+    // Claude-specific context generation
+  },
+
+  getConfigDir() {
+    return ".claude";
+  },
+
+  supportsMultiAgent() {
+    return true;  // Claude Code supports multi-agent
+  },
+
+  supportsHooks() {
+    return true;
+  },
+
+  async launchAgent(options) {
+    // Launch claude --agent
+  },
+};
+```
+
+### Detection and Usage
+
+```typescript
+// core/platforms/index.ts
+export function detectPlatform(repoRoot?: string): Platform {
+  const root = repoRoot ?? getRepoRoot();
+  if (fs.existsSync(path.join(root, ".claude"))) return "claude";
+  if (fs.existsSync(path.join(root, ".opencode"))) return "opencode";
+  // ... etc
+  return "claude";  // Default
+}
+
+export function getPlatformAdapter(repoRoot?: string): PlatformAdapter {
+  const platform = detectPlatform(repoRoot);
+  switch (platform) {
+    case "claude": return claudeAdapter;
+    // case "opencode": return opencodeAdapter;
+    default: return claudeAdapter;
+  }
+}
+```
+
+### Capability-Based Feature Flags
+
+```typescript
+// Usage in commands
+const adapter = getPlatformAdapter();
+
+if (!adapter.supportsMultiAgent()) {
+  console.error(`${adapter.platform} does not support multi-agent pipeline`);
+  console.error("Use manual workflow instead.");
+  process.exit(1);
+}
+
+await adapter.launchAgent({ agentType: "dispatch", ... });
+```
+
+---
+
+## Large File Refactoring
+
+### When to Split
+
+Split a file when:
+- It exceeds ~500 lines
+- It has distinct responsibilities that could be independent
+- Tests would be cleaner with separation
+- Multiple unrelated imports are needed
+
+### How to Split
+
+**Before** (monolithic):
+```
+src/core/task.ts (629 lines)
+├── Task type definitions
+├── Task CRUD operations
+├── Context file generation
+└── Platform-specific logic
+```
+
+**After** (domain-driven):
+```
+src/core/task/
+├── index.ts       # Re-exports everything
+├── schemas.ts     # Zod schemas + types
+├── crud.ts        # CRUD operations
+└── context.ts     # Context file management
+
+src/core/platforms/
+├── index.ts       # Platform detection
+├── types.ts       # PlatformAdapter interface
+└── claude/
+    ├── index.ts   # Claude adapter
+    └── context.ts # Claude-specific context
+```
+
+### Export Pattern for Split Modules
+
+Each submodule has an `index.ts` that exports everything:
+
+```typescript
+// core/task/index.ts
+export * from "./schemas.js";
+export * from "./crud.js";
+export * from "./context.js";
+```
+
+Root index re-exports for backward compatibility:
+
+```typescript
+// core/index.ts
+export * from "./task/index.js";
+export * from "./platforms/index.js";
+// ...
+```
+
+**Why**: Consumers can import from `core/index.js` or directly from `core/task/index.js`.
+
+---
+
+## Nullable Return Pattern
+
+### When to Return Null vs Throw
+
+Use nullable return types for "not found" scenarios:
+
+```typescript
+// Good: Return null when item may not exist
+export function readTask(taskDir: string): Task | null {
+  const taskJsonPath = path.join(taskDir, "task.json");
+  if (!fs.existsSync(taskJsonPath)) {
+    return null;  // Not found is a valid state
+  }
+  // ... read and validate
+}
+
+// Good: Return null for optional lookups
+export function findTask(nameOrSlug: string): { task: Task; dir: string } | null {
+  // Search logic...
+  return match ?? null;
+}
+
+// Bad: Throwing for not found (unless truly exceptional)
+export function getTask(taskDir: string): Task {
+  if (!fs.existsSync(taskJsonPath)) {
+    throw new Error("Task not found");  // Too aggressive
+  }
+}
+```
+
+**When to throw**:
+- Invalid arguments (programming error)
+- Corrupted data that can't be recovered
+- Required initialization missing
+
+**When to return null**:
+- Item doesn't exist (but could)
+- Optional data not configured
+- Search with no results
+
+---
+
+## Path Management
+
+### Centralized Path Functions
+
+All paths are managed through `core/paths.ts`:
+
+```typescript
+// Good: Use path functions
+import { getTasksDir, getTaskDir, getRepoRoot } from "./core/paths.js";
+
+const tasksDir = getTasksDir(repoRoot);
+const taskDir = getTaskDir("01-30-my-task", repoRoot);
+
+// Bad: Construct paths manually
+const tasksDir = path.join(repoRoot, ".trellis", "tasks");
+```
+
+### Path Function Signature Pattern
+
+All path functions accept optional `repoRoot` parameter:
+
+```typescript
+export function getTasksDir(repoRoot?: string): string {
+  const root = repoRoot ?? getRepoRoot();
+  return path.join(root, DIR_NAMES.WORKFLOW, DIR_NAMES.TASKS);
+}
+```
+
+### Store Relative, Display Relative
+
+```typescript
+// Store paths relative to repo root
+const relativePath = `.trellis/tasks/${dirName}`;
+
+// Convert to absolute only when needed for fs operations
+const absolutePath = path.join(repoRoot, relativePath);
+```
+
+---
+
+## Command Implementation Pattern
+
+### Command Structure
+
+Each CLI command follows this structure:
+
+```typescript
+export async function taskCreate(
+  title: string,
+  options: TaskCreateOptions,
+): Promise<void> {
+  // 1. Get repo root
+  const repoRoot = getRepoRoot();
+
+  // 2. Validate initialization
+  if (!isTrellisInitialized(repoRoot)) {
+    console.error(chalk.red("Error: Trellis not initialized. Run: trellis init"));
+    process.exit(1);
+  }
+
+  // 3. Validate required inputs
+  if (!title) {
+    console.error(chalk.red("Error: Title is required"));
+    process.exit(1);
+  }
+
+  // 4. Call core function
+  const taskPath = createTask(title, options, repoRoot);
+
+  // 5. Format output
+  if (options.json) {
+    console.log(JSON.stringify({ path: taskPath }));
+  } else {
+    console.log(taskPath);  // stdout for scripting
+    console.error(chalk.green(`Created task: ${taskPath}`));  // stderr for UI
+  }
+}
+```
+
+### Output Conventions
+
+| Stream | Usage | Example |
+|--------|-------|---------|
+| `stdout` | Data for scripting/piping | Task path, JSON output |
+| `stderr` | User messages, errors | Success messages, errors |
+
+```typescript
+// Data on stdout (can be piped)
+console.log(taskPath);
+
+// Messages on stderr (visible to user but not piped)
+console.error(chalk.green("Task created successfully"));
+
+// JSON mode outputs only to stdout
+if (options.json) {
+  console.log(JSON.stringify(result));
+  return;  // No stderr messages in JSON mode
+}
+```
+
+### --json Flag Pattern
+
+All list/read commands support `--json` flag:
+
+```typescript
+interface ListOptions {
+  json?: boolean;
+  // other options...
+}
+
+export async function taskList(options: ListOptions): Promise<void> {
+  const tasks = listTasks(options);
+
+  if (options.json) {
+    console.log(JSON.stringify(tasks, null, 2));
+    return;
+  }
+
+  // Human-readable format
+  for (const task of tasks) {
+    console.log(`${task.name} - ${task.status}`);
+  }
+}
+```
+
+---
+
+## File Format Specifications
+
+### JSON Files
+
+- 2-space indentation
+- Trailing newline
+- Used for: `task.json`, `package.json`
+
+```typescript
+fs.writeFileSync(
+  filePath,
+  JSON.stringify(data, null, 2) + "\n",
+  "utf-8"
+);
+```
+
+### JSONL Files (JSON Lines)
+
+- One JSON object per line
+- No trailing comma
+- Used for: `implement.jsonl`, `check.jsonl`, `debug.jsonl`
+
+```typescript
+// Reading JSONL
+const entries = content
+  .split("\n")
+  .filter(line => line.trim())
+  .map(line => JSON.parse(line));
+
+// Writing JSONL
+const jsonl = entries
+  .map(entry => JSON.stringify(entry))
+  .join("\n") + "\n";
+```
+
+### YAML Files
+
+- Comments above configuration values
+- Used for: `worktree.yaml`
+
+```yaml
+# Base directory for worktrees (relative to repo root)
+base_dir: "../worktrees"
+
+# Files to copy from main repo to worktree
+copy_files:
+  - ".env"
+  - ".env.local"
+```
+
+### Developer File Format
+
+Key-value pairs (not JSON):
+
+```
+name=developer-name
+initialized_at=2026-01-30T10:00:00Z
+```
+
+```typescript
+// Reading
+const match = content.match(/^name=(.+)$/m);
+const name = match?.[1];
+
+// Writing
+const content = `name=${name}\ninitialized_at=${new Date().toISOString()}\n`;
+```
+
+---
+
+## Import Conventions
+
+### Node.js Built-ins
+
+Use `node:` prefix:
+
+```typescript
+import fs from "node:fs";
+import path from "node:path";
+import { execSync } from "node:child_process";
+```
+
+### ESM Extensions
+
+Always use `.js` extension in imports (even for `.ts` files):
+
+```typescript
+// Good
+import { Task } from "./schemas.js";
+import { getRepoRoot } from "../paths.js";
+
+// Bad (won't work in ESM)
+import { Task } from "./schemas";
+```
+
+### Re-export Pattern
+
+Each module directory has an `index.ts`:
+
+```typescript
+// core/task/index.ts
+export * from "./schemas.js";
+export * from "./crud.js";
+export * from "./context.js";
+```
+
+---
+
 ## Quality Checklist
 
 Before committing, ensure:

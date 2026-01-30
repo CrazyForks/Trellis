@@ -230,6 +230,108 @@ try {
 
 ---
 
+## Zod Validation Errors
+
+### Pattern: Safe Parsing at Boundaries
+
+Use `safeParse` for external data (files, user input, API responses):
+
+```typescript
+import { TaskSchema } from "./schemas.js";
+
+export function loadTask(taskDir: string): Task | null {
+  const taskJsonPath = path.join(taskDir, "task.json");
+
+  if (!fs.existsSync(taskJsonPath)) {
+    return null;
+  }
+
+  const content = fs.readFileSync(taskJsonPath, "utf-8");
+  const result = TaskSchema.safeParse(JSON.parse(content));
+
+  if (!result.success) {
+    // Log detailed validation errors for debugging
+    console.warn(`Invalid task.json at ${taskJsonPath}:`);
+    result.error.issues.forEach(issue => {
+      console.warn(`  - ${issue.path.join(".")}: ${issue.message}`);
+    });
+    return null;
+  }
+
+  return result.data;
+}
+```
+
+### Pattern: Throw for Required Data
+
+When data MUST be valid (after the entry point has validated):
+
+```typescript
+// At entry point - use safeParse
+const result = TaskSchema.safeParse(data);
+if (!result.success) {
+  throw new Error(`Invalid task: ${result.error.message}`);
+}
+
+// Internal functions can assume valid data
+function processTask(task: Task): void {
+  // No need to re-validate - caller ensured validity
+}
+```
+
+### Pattern: Validation Error Messages
+
+When user needs to know what's wrong:
+
+```typescript
+const result = DeveloperSchema.safeParse(data);
+if (!result.success) {
+  const issues = result.error.issues
+    .map(i => `  - ${i.path.join(".")}: ${i.message}`)
+    .join("\n");
+  throw new Error(`Invalid developer config:\n${issues}`);
+}
+```
+
+---
+
+## execa Error Handling
+
+### Pattern: Git Command Errors
+
+```typescript
+import { execa } from "execa";
+
+export async function branchExists(branch: string, cwd?: string): Promise<boolean> {
+  try {
+    await execa("git", ["rev-parse", "--verify", branch], { cwd });
+    return true;
+  } catch {
+    return false;  // Branch doesn't exist
+  }
+}
+```
+
+### Pattern: Extract Error Message from execa
+
+```typescript
+import { execa, ExecaError } from "execa";
+
+export async function gitCommit(message: string, cwd?: string): Promise<void> {
+  try {
+    await execa("git", ["commit", "-m", message], { cwd });
+  } catch (error) {
+    if (error instanceof Error && "stderr" in error) {
+      const execaError = error as ExecaError;
+      throw new Error(`Git commit failed: ${execaError.stderr}`);
+    }
+    throw error;
+  }
+}
+```
+
+---
+
 ## Examples
 
 ### Complete Command Handler
